@@ -10,7 +10,6 @@ class PantallaLCD : public Componente {
     int direccionI2C;
     int columnas;
     int filas;
-    bool simulacion;
 
   public:
     PantallaLCD(int addr = 0x27, int cols = 16, int rows = 2);

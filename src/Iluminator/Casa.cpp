@@ -8,27 +8,25 @@
 
 //Constructor con pines de simulación:
 Casa::Casa() :
+  // LEDS - 7 espacios 
   sala(new LED(2)),
   cocina(new LED(3)),
   cuarto1(new LED(4)),
-  cuarto2(new LED(5)),
-  cuarto3(new LED(6)),
-  patioInterno(new LED(7)),
-  patioFrontal(new LED(8)),
-  patioTrasero(new LED(9)),
+  patioInterno(new LED(5)),
+  patioFrontal(new LED(6)),
+  patioTrasero(new LED(7)),
 
-  sensor(new SensorLDR(A0, 500)),
+  sensor(new SensorLDR(A0, 250)),
 
-  botonSala(new Boton(10)),
-  botonCocina(new Boton(11)),
-  botonCuarto1(new Boton(12)),
-  botonCuarto2(new Boton(13)),
-  botonCuarto3(new Boton(A1)),
-  botonPatioInt(new Boton(A2)),
-  botonPatioFront(new Boton(A3)),
-  botonPatioTras(new Boton(A4)),
-  botonAuto(new Boton(A5)),
-  botonModo(new Boton(1)),        // Se usa pin 1 para simulación
+  botonSala(new Boton(8)),
+  botonCocina(new Boton(9)),
+  botonCuarto1(new Boton(10)),
+  botonPatioInt(new Boton(11)),
+  botonPatioFront(new Boton(12)),
+  botonPatioTras(new Boton(13)),
+
+  botonAuto(new Boton(A1)),
+  botonModo(new Boton(A2)),       
 
   pantalla(new PantallaLCD()),
 
@@ -39,24 +37,35 @@ Casa::Casa() :
   {}
 
 void Casa::iniciar() {
+
+  Serial.begin(9600);
+  Serial.println("Iniciando Sistema...");
+
   //Iniciar todos los componentes
   sala->iniciar();
+  Serial.println("LED Sala: OK");
+
   cocina->iniciar();
+  Serial.println("LED Cocina: OK");
+
   cuarto1->iniciar();
-  cuarto2->iniciar();
-  cuarto3->iniciar();
+  Serial.println("LED Cuarto1: OK");
+
   patioInterno->iniciar();
+  Serial.println("LED patioInt: OK");
+
   patioFrontal->iniciar();
+  Serial.println("LED patioFront: OK");
+
   patioTrasero->iniciar();
+  Serial.println("LED patioTras: OK");
+
 
   sensor->iniciar();
-  sensor->setSimulacion(true);  // Modo simulación
 
   botonSala->iniciar();
   botonCocina->iniciar();
   botonCuarto1->iniciar();
-  botonCuarto2->iniciar();
-  botonCuarto3->iniciar();
   botonPatioInt->iniciar();
   botonPatioFront->iniciar();
   botonPatioTras->iniciar();
@@ -65,17 +74,15 @@ void Casa::iniciar() {
   
   pantalla->iniciar();
   
-  // Configurar simulación en botones
-  botonSala->escribir(0);
-  botonCocina->escribir(0);
-  botonAuto->escribir(0);
-  botonModo->escribir(0);
-  
-  Serial.begin(9600);
-  Serial.println("Sistema de Iluminación Iniciado (Modo Simulación)");
 }
 
 void Casa::actualizar() {
+  static int contador = 0;
+
+  if (contador++ % 100 == 0) {
+    Serial.print(".");
+  }
+
   //Cambiar modo global
   if (botonModo->fuePresionado()) {
     cambiarModo();
@@ -105,6 +112,10 @@ void Casa::actualizar() {
   if (millis() - ultimaActualizacionLCD > 500) {
     actualizarLCD();
     ultimaActualizacionLCD = millis();
+    Serial.print("Valor sensor: ");
+    Serial.println(sensor->leer());
+    Serial.print("esDeDia: ");
+    Serial.println(sensor->esDeDia());
   }
 }
 
@@ -119,8 +130,6 @@ void Casa::cambiarModo() {
     sala->escribir(sala->leer());
     cocina->escribir(cocina->leer());
     cuarto1->escribir(cuarto1->leer());
-    cuarto2->escribir(cuarto2->leer());
-    cuarto3->escribir(cuarto3->leer());
     patioInterno->escribir(patioInterno->leer());
     patioFrontal->escribir(patioFrontal->leer());
     patioTrasero->escribir(patioTrasero->leer());
@@ -133,8 +142,6 @@ void Casa::aplicarModoGlobal(ModoIluminacion modo) {
       sala->escribir(50);  // Luz tenue
       cocina->escribir(0); // Apagado
       cuarto1->escribir(30);
-      cuarto2->escribir(30);
-      cuarto3->escribir(30);
       patioInterno->escribir(30);
       patioFrontal->escribir(10);
       patioTrasero->escribir(10);
@@ -144,8 +151,6 @@ void Casa::aplicarModoGlobal(ModoIluminacion modo) {
       sala->escribir(255);
       cocina->escribir(200);
       cuarto1->escribir(255);
-      cuarto2->escribir(255);
-      cuarto3->escribir(255);
       patioInterno->escribir(100);
       patioFrontal->escribir(0);
       patioTrasero->escribir(0);
@@ -159,8 +164,6 @@ void Casa::aplicarModoGlobal(ModoIluminacion modo) {
         sala->escribir(estado * 255);
         cocina->escribir(!estado * 255);
         cuarto1->escribir(!estado * 255);
-        cuarto2->escribir(!estado * 255);
-        cuarto3->escribir(!estado * 255);
         patioInterno->escribir(estado * 255);
         patioFrontal->escribir(!estado * 255);
         patioTrasero->escribir(estado * 255);
@@ -173,8 +176,6 @@ void Casa::aplicarModoGlobal(ModoIluminacion modo) {
       sala->escribir(80);
       cocina->escribir(60);
       cuarto1->escribir(70);
-      cuarto2->escribir(70);
-      cuarto3->escribir(70);
       patioInterno->escribir(40);
       patioFrontal->escribir(30);
       patioTrasero->escribir(30);
@@ -184,8 +185,6 @@ void Casa::aplicarModoGlobal(ModoIluminacion modo) {
       sala->escribir(0);
       cocina->escribir(0);
       cuarto1->escribir(0);
-      cuarto2->escribir(0);
-      cuarto3->escribir(0);
       patioInterno->escribir(0);
       patioFrontal->escribir(0);
       patioTrasero->escribir(0);
@@ -213,20 +212,6 @@ void Casa::verificarBotonesManuales() {
     bool estado = cuarto1->leer();
     cuarto1->escribir(!estado);
     Serial.println("Cuarto1: " + String(!estado ? "ENCENDIDO" : "APAGADO"));
-  }
-
-  //Cuarto2
-  if (botonCuarto2->fuePresionado()) {
-    bool estado = cuarto2->leer();
-    cuarto2->escribir(!estado);
-    Serial.println("Cuarto2: " + String(!estado ? "ENCENDIDO" : "APAGADO"));
-  }
-
-  //Cuarto3
-  if (botonCuarto3->fuePresionado()) {
-    bool estado = cuarto3->leer();
-    cuarto3->escribir(!estado);
-    Serial.println("Cuarto3: " + String(!estado ? "ENCENDIDO" : "APAGADO"));
   }
 
   // Patio Interno
@@ -258,8 +243,6 @@ void Casa::controlAutomatico() {
     sala->escribir(1);
     cocina->escribir(1);
     cuarto1->escribir(1);
-    cuarto2->escribir(1);
-    cuarto3->escribir(1);
     patioInterno->escribir(1);
     patioFrontal->escribir(1);
     patioTrasero->escribir(1);
@@ -269,8 +252,6 @@ void Casa::controlAutomatico() {
     sala->escribir(0);
     cocina->escribir(0);
     cuarto1->escribir(0);
-    cuarto2->escribir(0);
-    cuarto3->escribir(0);
     patioInterno->escribir(0);
     patioFrontal->escribir(0);
     patioTrasero->escribir(0);
@@ -282,8 +263,6 @@ int Casa::contarLEDsEncendidos() {
   if (sala->leer()) contador++;
   if (cocina->leer()) contador++;
   if (cuarto1->leer()) contador++;
-  if (cuarto2->leer()) contador++;
-  if (cuarto3->leer()) contador++;
   if (patioInterno->leer()) contador++;
   if (patioFrontal->leer()) contador++;
   if (patioTrasero->leer()) contador++;

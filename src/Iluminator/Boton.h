@@ -9,13 +9,11 @@ class Boton : public Componente {
     bool estadoAnterior;
     unsigned long ultimoCambio;
     int debounceDelay;
-    bool simulacion;
-    bool estadoSimulado;
 
   public:
     Boton(int pinBoton, int debounce = 50);
     void iniciar() override;
-    void escribir(int valor) override;      // Para simulación
+    void escribir(int valor) override;      // 
     int leer() override;                    // 1 si presionado, 0 si no
     bool fuePresionado();                   // Detecta la acción
 };

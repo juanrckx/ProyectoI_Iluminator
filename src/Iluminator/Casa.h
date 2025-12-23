@@ -13,8 +13,6 @@ class Casa {
     LED* sala;
     LED* cocina;
     LED* cuarto1;
-    LED* cuarto2;
-    LED* cuarto3;
     LED* patioInterno;
     LED* patioFrontal;
     LED* patioTrasero;
@@ -26,8 +24,6 @@ class Casa {
     Boton* botonSala;
     Boton* botonCocina;
     Boton* botonCuarto1;
-    Boton* botonCuarto2;
-    Boton* botonCuarto3;
     Boton* botonPatioInt;
     Boton* botonPatioFront;
     Boton* botonPatioTras;
