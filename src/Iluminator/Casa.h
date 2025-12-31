@@ -20,30 +20,32 @@ class Casa {
     // Sensores, (pueden ser 1 por espacio, pero para pruebas se probará con uno global)
     SensorLDR* sensor;
 
-    // Botones: 6 para manual + 1 para auto + 1 para modos
+    // Botones: 6 para manual
     Boton* botonSala;
     Boton* botonCocina;
     Boton* botonCuarto1;
     Boton* botonPatioInt;
     Boton* botonPatioFront;
     Boton* botonPatioTras;
-    Boton* botonAuto;
-    Boton* botonModo;
+
+    //Potenciometro para modos
+    static const int PIN_POTENCIOMETRO = A1;
     
     // Pantalla
     PantallaLCD* pantalla;
 
     // Estado del sistema
     ModoIluminacion modoActual;
-    bool autoActivo;
+    ModoIluminacion modoAnterior;
     int ledsEncendidos;
+    unsigned long ultimaActualizacionPot;
     unsigned long ultimaActualizacionLCD;
 
   public:
     Casa(); //Constructor con pines por defecto (simulación)
     void iniciar();
     void actualizar();
-    void cambiarModo();
+    void cambiarModo(ModoIluminacion nuevoModo);
     int contarLEDsEncendidos();
     void aplicarModoGlobal(ModoIluminacion modo);
 
@@ -51,6 +53,8 @@ class Casa {
     void actualizarLCD();
     void verificarBotonesManuales();
     void controlAutomatico();
+    void leerPotenciometro();
+    ModoIluminacion obtenerModoDesdePot(int valorPot); //Método interno
 };
 
 #endif

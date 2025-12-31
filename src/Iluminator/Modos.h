@@ -10,7 +10,8 @@ enum ModoIluminacion {
   MODO_LECTURA = 3,
   MODO_FIESTA = 4,
   MODO_RELAJACION = 5,
-  MODO_APAGADO = 6
+  MODO_APAGADO = 6,
+  NUM_MODOS = 7
 };
 
 inline String nombreModo(ModoIluminacion modo) {

@@ -6,9 +6,10 @@
 class Boton : public Componente {
   private:
     int pin;
-    bool estadoAnterior;
-    unsigned long ultimoCambio;
     int debounceDelay;
+    bool estadoAnterior;
+    bool estadoPresionadoAnterior;
+    unsigned long ultimoCambio;
 
   public:
     Boton(int pinBoton, int debounce = 50);

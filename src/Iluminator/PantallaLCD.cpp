@@ -30,15 +30,51 @@ int PantallaLCD::leer() {
 
 void PantallaLCD::mostrarInfo(int valorLuz, String modo, int ledsEncendidos) {
   limpiar();
+  
+  // Línea 1: Modo y estado
   lcd->setCursor(0, 0);
-  lcd->print("Luz: ");
-  lcd->print(valorLuz);
-  lcd->print(" Modo:");
+  lcd->print("Modo:");
 
+  if (modo.length() <= 11) {
+    lcd->setCursor(6, 0);
+    lcd->print(modo);
+  }
+  else {
+    lcd->setCursor(6, 0);
+    lcd->print(modo.substring(0, 10));
+  }
+
+  // Línea 2: Información detallada
   lcd->setCursor(0, 1);
-  lcd->print("LEDs ON:");
+  lcd->print("S:");
+  if (valorLuz < 10) {
+    lcd->print("00");
+    lcd->print(valorLuz);
+  }
+  else if (valorLuz < 100) {
+    lcd->print("0");
+    lcd->print(valorLuz);
+  }
+  else {
+    lcd->print(valorLuz);
+  }
+
+  //Mostrar LEDs encendidos
+  lcd->print(" L:");
   lcd->print(ledsEncendidos);
   lcd->print("/6");
+
+  //Indicador visual de modo
+  lcd->setCursor(15, 1);
+  if (modo == "Auto") {
+    lcd->print("A");
+  }
+  else if (modo == "Manual") {
+    lcd->print("M");
+  }
+  else {
+    lcd->print("*"); //Modo especial
+  }
 }
 
 void PantallaLCD::limpiar() {

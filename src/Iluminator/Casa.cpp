@@ -6,9 +6,9 @@
 #include "Casa.h"
 #include <Arduino.h>
 
-//Constructor con pines de simulación:
+//Constructor con pines
 Casa::Casa() :
-  // LEDS - 7 espacios 
+  // LEDS - 6 espacios 
   sala(new LED(2)),
   cocina(new LED(3)),
   cuarto1(new LED(4)),
@@ -23,21 +23,18 @@ Casa::Casa() :
   botonCuarto1(new Boton(10)),
   botonPatioInt(new Boton(11)),
   botonPatioFront(new Boton(12)),
-  botonPatioTras(new Boton(13)),
-
-  botonAuto(new Boton(A1)),
-  botonModo(new Boton(A2)),       
+  botonPatioTras(new Boton(13)),      
 
   pantalla(new PantallaLCD()),
 
   modoActual(MODO_AUTO),
-  autoActivo(true),
+  modoAnterior(MODO_AUTO),
   ledsEncendidos(0),
-  ultimaActualizacionLCD(0)
-  {}
+  ultimaActualizacionLCD(0),
+  ultimaActualizacionPot(0)
+{}
 
 void Casa::iniciar() {
-
   Serial.begin(9600);
   Serial.println("Iniciando Sistema...");
 
@@ -69,71 +66,90 @@ void Casa::iniciar() {
   botonPatioInt->iniciar();
   botonPatioFront->iniciar();
   botonPatioTras->iniciar();
-  botonAuto->iniciar();
-  botonModo->iniciar();
-  
+
+  pinMode(PIN_POTENCIOMETRO, INPUT);
+
   pantalla->iniciar();
   
 }
 
+ModoIluminacion Casa::obtenerModoDesdePot(int valorPot) {
+    const int NUM_MODOS = 7;
+    int segmento = map(valorPot, 0, 1022, 0, NUM_MODOS - 1);
+    
+    if (segmento < 0) segmento = 0;
+    if (segmento >= NUM_MODOS) segmento = NUM_MODOS - 1;
+    
+    return static_cast<ModoIluminacion>(segmento);
+}
+
 void Casa::actualizar() {
-  static int contador = 0;
-
-  if (contador++ % 100 == 0) {
-    Serial.print(".");
+  //Leer potenciomtro
+  if (millis() - ultimaActualizacionPot > 200) {
+    leerPotenciometro();
+    ultimaActualizacionPot = millis();
   }
 
-  //Cambiar modo global
-  if (botonModo->fuePresionado()) {
-    cambiarModo();
+  //Ejecutar lógica segun modo
+  switch(modoActual) {
+    case MODO_AUTO:
+      controlAutomatico();
+      break;
+    
+    case MODO_MANUAL:
+      verificarBotonesManuales();
+      break;
+
+    default:
+      aplicarModoGlobal(modoActual);
+      break;
   }
 
-  //Activar/desactivar automático
-  if (botonAuto->fuePresionado()) {
-    autoActivo = !autoActivo;
-    Serial.print("Modo auto: ");
-    Serial.println(autoActivo ? "ACTIVADO" : "DESACTIVADO");
-  }
-
-  //Control según modo
-  if (autoActivo && modoActual == MODO_AUTO) {
-    controlAutomatico();
-  }
-  else {
-    verificarBotonesManuales();
-  }
-
-  // Aplicar modo global si no es Auto
-  if (modoActual != MODO_AUTO && modoActual != MODO_MANUAL) {
-    aplicarModoGlobal(modoActual);
-  }
-
-  //Actualizar LCD cada 500ms
+  //Actualizar LCD
   if (millis() - ultimaActualizacionLCD > 500) {
     actualizarLCD();
     ultimaActualizacionLCD = millis();
-    Serial.print("Valor sensor: ");
-    Serial.println(sensor->leer());
-    Serial.print("esDeDia: ");
-    Serial.println(sensor->esDeDia());
+
+    //DEBUG
+    Serial.print("Modo: ");
+    Serial.print(nombreModo(modoActual));
+    Serial.print(" | Luz: ");
+    Serial.print(sensor->leer());
+    Serial.print(" | LEDs ON: ");
+    Serial.println(contarLEDsEncendidos());
   }
 }
 
-void Casa::cambiarModo() {
-  modoActual = static_cast<ModoIluminacion>((modoActual + 1) % 7);
+void Casa::leerPotenciometro() {
+  int valorPot = analogRead(PIN_POTENCIOMETRO);
+  ModoIluminacion nuevoModo = obtenerModoDesdePot(valorPot);
+
+  //Solo cambiar si es diferente al anterior
+  if (nuevoModo != modoAnterior) {
+    cambiarModo(nuevoModo);
+    modoAnterior = nuevoModo;
+  }
+}
+
+void Casa::cambiarModo(ModoIluminacion nuevoModo) {
+  modoActual = nuevoModo;
+
   Serial.print("Modo cambiado a: ");
-  Serial.println(nombreModo(modoActual));
+  Serial.println(nombreModo(nuevoModo));
 
   // Si cambia a manual o auto, apagar modos especiales
   if (modoActual == MODO_MANUAL || modoActual == MODO_AUTO) {
-    //Restaurar estado normal
-    sala->escribir(sala->leer());
-    cocina->escribir(cocina->leer());
-    cuarto1->escribir(cuarto1->leer());
-    patioInterno->escribir(patioInterno->leer());
-    patioFrontal->escribir(patioFrontal->leer());
-    patioTrasero->escribir(patioTrasero->leer());
-  }
+
+    if (nuevoModo == MODO_MANUAL) {
+      sala->escribir(0);
+      cocina->escribir(0);
+      cuarto1->escribir(0);
+      patioInterno->escribir(0);
+      patioFrontal->escribir(0);
+      patioTrasero->escribir(0);
+    }
+
+  } 
 }
 
 void Casa::aplicarModoGlobal(ModoIluminacion modo) {
@@ -159,10 +175,10 @@ void Casa::aplicarModoGlobal(ModoIluminacion modo) {
     case MODO_FIESTA:
     // Efecto parpadeante
       static unsigned long ultimoCambioFiesta = 0;
-      if (millis() - ultimoCambioFiesta > 300) {
+      if (millis() - ultimoCambioFiesta > 50) {
         int estado = random(0, 2);
-        sala->escribir(estado * 255);
-        cocina->escribir(!estado * 255);
+        sala->escribir(!estado * 255);
+        cocina->escribir(estado * 255);
         cuarto1->escribir(!estado * 255);
         patioInterno->escribir(estado * 255);
         patioFrontal->escribir(!estado * 255);
@@ -173,12 +189,12 @@ void Casa::aplicarModoGlobal(ModoIluminacion modo) {
 
     case MODO_RELAJACION:
     // Luz suave
-      sala->escribir(80);
-      cocina->escribir(60);
-      cuarto1->escribir(70);
+      sala->escribir(150);
+      cocina->escribir(40);
+      cuarto1->escribir(150);
       patioInterno->escribir(40);
-      patioFrontal->escribir(30);
-      patioTrasero->escribir(30);
+      patioFrontal->escribir(40);
+      patioTrasero->escribir(128);
       break;
 
     case MODO_APAGADO:
@@ -240,12 +256,12 @@ void Casa::controlAutomatico() {
   bool esDeNoche = !sensor->esDeDia();
 
   if (esDeNoche) {
-    sala->escribir(1);
-    cocina->escribir(1);
-    cuarto1->escribir(1);
-    patioInterno->escribir(1);
-    patioFrontal->escribir(1);
-    patioTrasero->escribir(1);
+    sala->escribir(255);
+    cocina->escribir(255);
+    cuarto1->escribir(255);
+    patioInterno->escribir(255);
+    patioFrontal->escribir(255);
+    patioTrasero->escribir(255);
   } 
   
   else {
