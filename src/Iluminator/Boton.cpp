@@ -2,37 +2,57 @@
 #include <Arduino.h>
 
 Boton::Boton(int pinBoton, int debounce)
-  : pin(pinBoton), estadoAnterior(LOW), ultimoCambio(0),
-    debounceDelay(debounce), estadoPresionadoAnterior(false) {}
+  : pin(pinBoton), debounceDelay(debounce), 
+    ultimaEstable(LOW), ultimoCambio(0), 
+    ultimoEvento(0), estadoPrevio(LOW) {}
 
 void Boton::iniciar() {
-    pinMode(pin, INPUT_PULLUP);                         // Normalmente HIGH, presionado = LOW
+    pinMode(pin, INPUT_PULLUP);
+    // Leer estado inicial después de configurar el pin
+    ultimaEstable = digitalRead(pin);
+    estadoPrevio = ultimaEstable;
 }
 
-void Boton::escribir(int valor) {}
+void Boton::escribir(int valor) {
+    // No aplica para botones
+}
 
 int Boton::leer() {
-  // Lectura real con debounce
-  int lectura = digitalRead(pin);
-
-  if (lectura != estadoAnterior) {
-    ultimoCambio = millis();
-  }
-
-  if ((millis() - ultimoCambio) > debounceDelay) {
-    if (lectura != estadoAnterior) {
-      estadoAnterior = lectura;
+    int lectura = digitalRead(pin);
+    unsigned long ahora = millis();
+    
+    // Si el estado cambió, reiniciar el timer
+    if (lectura != estadoPrevio) {
+        ultimoCambio = ahora;
+        estadoPrevio = lectura;
     }
-  }
-  return estadoAnterior;
+    
+    // Si ha pasado el tiempo de debounce, actualizar estado estable
+    if ((ahora - ultimoCambio) > debounceDelay) {
+        if (lectura != ultimaEstable) {
+            ultimaEstable = lectura;
+        }
+    }
+    
+    return ultimaEstable;
 }
 
 bool Boton::fuePresionado() {
-  int estadoActual = leer();
-  bool presionado = (estadoActual == LOW);                  // LOW = presionado en PULLUP
-
-  bool resultado = (presionado && !estadoPresionadoAnterior);
-  estadoPresionadoAnterior = presionado;
-  
-  return resultado;
+    int estadoActual = leer();
+    
+    // Con INPUT_PULLUP: LOW = presionado, HIGH = no presionado
+    bool presionado = (estadoActual == LOW);
+    
+    // Solo generar evento si pasó tiempo suficiente desde el último
+    unsigned long ahora = millis();
+    bool resultado = false;
+    
+    if (presionado) {
+        if ((ahora - ultimoEvento) > debounceDelay * 2) {
+            resultado = true;
+            ultimoEvento = ahora;
+        }
+    }
+    
+    return resultado;
 }

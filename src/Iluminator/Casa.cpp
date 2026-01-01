@@ -32,7 +32,14 @@ Casa::Casa() :
   ledsEncendidos(0),
   ultimaActualizacionLCD(0),
   ultimaActualizacionPot(0)
-{}
+
+  // Inicializar estados manuales
+  {
+  for(int i = 0; i < 6; i++) {
+    estadoManual[i] = false;
+    overrideManual[i] = false;
+  }
+}
 
 void Casa::iniciar() {
   Serial.begin(9600);
@@ -70,7 +77,58 @@ void Casa::iniciar() {
   pinMode(PIN_POTENCIOMETRO, INPUT);
 
   pantalla->iniciar();
+  for(int i = 0; i < 6; i++) {
+    estadoManual[i] = false;
+    overrideManual[i] = false;
+  }
+}
+
+void Casa::aplicarControlCombinado() {
+  // Solo aplica en modos AUTO y MANUAL
+  if(modoActual != MODO_AUTO && modoActual != MODO_MANUAL) {
+    return;
+  }
+
+  // Determinar estado automático
+  bool estadoAuto[6] = {false};
+  if(modoActual == MODO_AUTO) {
+    bool esDeNoche = !sensor->esDeDia();
+    for (int i = 0; i < 6; i++) {
+      estadoAuto[i] = esDeNoche;
+    }
+  }
   
+  LED* leds[] = {sala, cocina, cuarto1, patioInterno, patioFrontal, patioTrasero};
+
+  for(int i = 0; i < 6; i++) {
+    bool estadoFinal;
+
+    if(modoActual == MODO_MANUAL) {
+      //Solo manual
+      estadoFinal = estadoManual[i];
+    }
+    else if(modoActual == MODO_AUTO) {
+      if(overrideManual[i]) {
+        estadoFinal = estadoManual[i];
+      }
+        else {
+          estadoFinal = estadoAuto[i];
+        }
+    }
+    leds[i]->escribir(estadoFinal ? 255 : 0);
+  }
+}
+
+void Casa::toggleLEDManual(int index) {
+  if(index < 0 || index >= 6) return;
+
+  estadoManual[index] = !estadoManual[index];
+  overrideManual[index] = true; // Marcar como sobreescrito
+
+  Serial.print("LED ");
+  Serial.print(index);
+  Serial.print(" manual: ");
+  Serial.println(estadoManual[index] ? "ON" : "OFF");
 }
 
 ModoIluminacion Casa::obtenerModoDesdePot(int valorPot) {
@@ -83,6 +141,46 @@ ModoIluminacion Casa::obtenerModoDesdePot(int valorPot) {
     return static_cast<ModoIluminacion>(segmento);
 }
 
+void Casa::verificarBotones() {
+  // DEBUG: Verificar estado de cada botón
+  static unsigned long ultimoDebug = 0;
+  if (millis() - ultimoDebug > 1000) {
+    Serial.println("=== DEBUG BOTONES ===");
+    Serial.print("Sala(pin8):"); Serial.print(botonSala->leer() == LOW ? "PRES" : "LIB");
+    Serial.print(" | Cocina:"); Serial.print(botonCocina->leer() == LOW ? "PRES" : "LIB");
+    Serial.print(" | Cuarto1:"); Serial.print(botonCuarto1->leer() == LOW ? "PRES" : "LIB");
+    Serial.print(" | PatioInt:"); Serial.print(botonPatioInt->leer() == LOW ? "PRES" : "LIB");
+    Serial.print(" | PatioFront:"); Serial.print(botonPatioFront->leer() == LOW ? "PRES" : "LIB");
+    Serial.print(" | PatioTras:"); Serial.println(botonPatioTras->leer() == LOW ? "PRES" : "LIB");
+    ultimoDebug = millis();
+  }
+  
+
+  if(modoActual >= MODO_NOCHE && modoActual <= MODO_APAGADO) {
+    return;
+  }
+
+  // Mapeo de botones a índices
+  if (botonSala->fuePresionado()) {
+    toggleLEDManual(SALA);
+  }
+  if (botonCocina->fuePresionado()) {
+    toggleLEDManual(COCINA);
+  }
+  if (botonCuarto1->fuePresionado()) {
+    toggleLEDManual(CUARTO1);
+  }
+  if (botonPatioInt->fuePresionado()) {
+    toggleLEDManual(PATIO_INT);
+  }
+  if (botonPatioFront->fuePresionado()) {
+    toggleLEDManual(PATIO_FRONT);
+  }
+  if (botonPatioTras->fuePresionado()) {
+    toggleLEDManual(PATIO_TRAS);
+  }
+}
+
 void Casa::actualizar() {
   //Leer potenciomtro
   if (millis() - ultimaActualizacionPot > 200) {
@@ -90,18 +188,25 @@ void Casa::actualizar() {
     ultimaActualizacionPot = millis();
   }
 
+  verificarBotones();
+
   //Ejecutar lógica segun modo
   switch(modoActual) {
     case MODO_AUTO:
       controlAutomatico();
+      aplicarControlCombinado();
       break;
     
     case MODO_MANUAL:
-      verificarBotonesManuales();
+      aplicarControlCombinado();
       break;
 
     default:
       aplicarModoGlobal(modoActual);
+      // Resetear overrides cuando entramos en modo especial
+      for(int i = 0; i < 6; i++) {
+        overrideManual[i] = false;
+      }
       break;
   }
 
@@ -109,14 +214,6 @@ void Casa::actualizar() {
   if (millis() - ultimaActualizacionLCD > 500) {
     actualizarLCD();
     ultimaActualizacionLCD = millis();
-
-    //DEBUG
-    Serial.print("Modo: ");
-    Serial.print(nombreModo(modoActual));
-    Serial.print(" | Luz: ");
-    Serial.print(sensor->leer());
-    Serial.print(" | LEDs ON: ");
-    Serial.println(contarLEDsEncendidos());
   }
 }
 
@@ -134,21 +231,11 @@ void Casa::leerPotenciometro() {
 void Casa::cambiarModo(ModoIluminacion nuevoModo) {
   modoActual = nuevoModo;
 
-  Serial.print("Modo cambiado a: ");
-  Serial.println(nombreModo(nuevoModo));
-
   // Si cambia a manual o auto, apagar modos especiales
-  if (modoActual == MODO_MANUAL || modoActual == MODO_AUTO) {
-
-    if (nuevoModo == MODO_MANUAL) {
-      sala->escribir(0);
-      cocina->escribir(0);
-      cuarto1->escribir(0);
-      patioInterno->escribir(0);
-      patioFrontal->escribir(0);
-      patioTrasero->escribir(0);
+  if (nuevoModo == MODO_AUTO || nuevoModo == MODO_MANUAL) {
+    for(int i = 0; i < 6; i++) {
+      overrideManual[i] = false;
     }
-
   } 
 }
 
@@ -208,49 +295,6 @@ void Casa::aplicarModoGlobal(ModoIluminacion modo) {
   }
 }
 
-void Casa::verificarBotonesManuales() {
-  // Sala
-  if (botonSala->fuePresionado()) {
-    bool estado = sala->leer();
-    sala->escribir(!estado);
-    Serial.println("Sala: " + String(!estado ? "ENCENDIDO" : "APAGADO"));
-  }
-
-  // Cocina
-  if (botonCocina->fuePresionado()) {
-    bool estado = cocina->leer();
-    cocina->escribir(!estado);
-    Serial.println("Cocina: " + String(!estado ? "ENCENDIDO" : "APAGADO"));
-  }
-
-  // Cuarto1
-  if (botonCuarto1->fuePresionado()) {
-    bool estado = cuarto1->leer();
-    cuarto1->escribir(!estado);
-    Serial.println("Cuarto1: " + String(!estado ? "ENCENDIDO" : "APAGADO"));
-  }
-
-  // Patio Interno
-  if (botonPatioInt->fuePresionado()) {
-    bool estado = patioInterno->leer();
-    patioInterno->escribir(!estado);
-    Serial.println("Patio Interno: " + String(!estado ? "ENCENDIDO" : "APAGADO"));
-  }
-
-  // Patio Frontal
-  if (botonPatioFront->fuePresionado()) {
-    bool estado = patioFrontal->leer();
-    patioFrontal->escribir(!estado);
-    Serial.println("Patio Frontal: " + String(!estado ? "ENCENDIDO" : "APAGADO"));
-  }
-
-  //Patio Trasero
-  if (botonPatioTras->fuePresionado()) {
-    bool estado = patioTrasero->leer();
-    patioTrasero->escribir(!estado);
-    Serial.println("Patio Trasero: " + String(!estado ? "ENCENDIDO" : "APAGADO"));
-  }
-}
 
 void Casa::controlAutomatico() {
   bool esDeNoche = !sensor->esDeDia();

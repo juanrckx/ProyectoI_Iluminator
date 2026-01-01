@@ -41,6 +41,9 @@ class Casa {
     unsigned long ultimaActualizacionPot;
     unsigned long ultimaActualizacionLCD;
 
+    bool estadoManual[6]; // Estado manual para cada LED
+    bool overrideManual[6];
+
   public:
     Casa(); //Constructor con pines por defecto (simulación)
     void iniciar();
@@ -49,12 +52,18 @@ class Casa {
     int contarLEDsEncendidos();
     void aplicarModoGlobal(ModoIluminacion modo);
 
+    void toggleLEDManual(int index);
+    void aplicarControlCombinado(); // Aplica OR entre automático y manual
+
   private:
     void actualizarLCD();
-    void verificarBotonesManuales();
+    void verificarBotones();
+
     void controlAutomatico();
     void leerPotenciometro();
     ModoIluminacion obtenerModoDesdePot(int valorPot); //Método interno
+
+    enum Espacios { SALA, COCINA, CUARTO1, PATIO_INT, PATIO_FRONT, PATIO_TRAS};
 };
 
 #endif
