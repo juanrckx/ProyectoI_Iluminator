@@ -38,6 +38,7 @@ Casa::Casa() :
   for(int i = 0; i < 6; i++) {
     estadoManual[i] = false;
     overrideManual[i] = false;
+    intensidadAutoArray[i] = 0;
   }
 }
 
@@ -84,39 +85,36 @@ void Casa::iniciar() {
 }
 
 void Casa::aplicarControlCombinado() {
-  // Solo aplica en modos AUTO y MANUAL
-  if(modoActual != MODO_AUTO && modoActual != MODO_MANUAL) {
-    return;
-  }
-
-  // Determinar estado automático
-  bool estadoAuto[6] = {false};
-  if(modoActual == MODO_AUTO) {
-    bool esDeNoche = !sensor->esDeDia();
+    // Solo aplica en modos AUTO y MANUAL
+    if (modoActual != MODO_AUTO && modoActual != MODO_MANUAL) {
+        return;
+    }
+    
+    // Array de LEDs para fácil acceso
+    LED* leds[] = {sala, cocina, cuarto1, patioInterno, patioFrontal, patioTrasero};
+    
     for (int i = 0; i < 6; i++) {
-      estadoAuto[i] = esDeNoche;
-    }
-  }
-  
-  LED* leds[] = {sala, cocina, cuarto1, patioInterno, patioFrontal, patioTrasero};
-
-  for(int i = 0; i < 6; i++) {
-    bool estadoFinal;
-
-    if(modoActual == MODO_MANUAL) {
-      //Solo manual
-      estadoFinal = estadoManual[i];
-    }
-    else if(modoActual == MODO_AUTO) {
-      if(overrideManual[i]) {
-        estadoFinal = estadoManual[i];
-      }
-        else {
-          estadoFinal = estadoAuto[i];
+        int intensidadFinal;
+        
+        if (modoActual == MODO_MANUAL) {
+            // Solo manual: 255 si está encendido, 0 si está apagado
+            intensidadFinal = estadoManual[i] ? 255 : 0;
+        } 
+        else if (modoActual == MODO_AUTO) {
+            // AUTO: OR entre automático y manual
+            if (overrideManual[i]) {
+                // Usuario sobrescribió manualmente
+                intensidadFinal = estadoManual[i] ? 255 : 0;
+            } 
+            else {
+                // Usar intensidad automática proporcional
+                intensidadFinal = intensidadAutoArray[i];
+            }
         }
+        
+        // Aplicar la intensidad al LED
+        leds[i]->escribir(intensidadFinal);
     }
-    leds[i]->escribir(estadoFinal ? 255 : 0);
-  }
 }
 
 void Casa::toggleLEDManual(int index) {
@@ -142,20 +140,6 @@ ModoIluminacion Casa::obtenerModoDesdePot(int valorPot) {
 }
 
 void Casa::verificarBotones() {
-  // DEBUG: Verificar estado de cada botón
-  static unsigned long ultimoDebug = 0;
-  if (millis() - ultimoDebug > 1000) {
-    Serial.println("=== DEBUG BOTONES ===");
-    Serial.print("Sala(pin8):"); Serial.print(botonSala->leer() == LOW ? "PRES" : "LIB");
-    Serial.print(" | Cocina:"); Serial.print(botonCocina->leer() == LOW ? "PRES" : "LIB");
-    Serial.print(" | Cuarto1:"); Serial.print(botonCuarto1->leer() == LOW ? "PRES" : "LIB");
-    Serial.print(" | PatioInt:"); Serial.print(botonPatioInt->leer() == LOW ? "PRES" : "LIB");
-    Serial.print(" | PatioFront:"); Serial.print(botonPatioFront->leer() == LOW ? "PRES" : "LIB");
-    Serial.print(" | PatioTras:"); Serial.println(botonPatioTras->leer() == LOW ? "PRES" : "LIB");
-    ultimoDebug = millis();
-  }
-  
-
   if(modoActual >= MODO_NOCHE && modoActual <= MODO_APAGADO) {
     return;
   }
@@ -297,26 +281,27 @@ void Casa::aplicarModoGlobal(ModoIluminacion modo) {
 
 
 void Casa::controlAutomatico() {
-  bool esDeNoche = !sensor->esDeDia();
+  int intensidadAuto = sensor->calcularIntensidadLED(255);
 
-  if (esDeNoche) {
-    sala->escribir(255);
-    cocina->escribir(255);
-    cuarto1->escribir(255);
-    patioInterno->escribir(255);
-    patioFrontal->escribir(255);
-    patioTrasero->escribir(255);
-  } 
+  // DEBUG: Mostrar valores
+  static unsigned long ultimoDebugAuto = 0;
+  if (millis() - ultimoDebugAuto > 1000) {
+      Serial.print("[AUTO] Sensor: ");
+      Serial.print(sensor->leer());
+      Serial.print(" | Nivel Luz: ");
+      Serial.print(sensor->obtenerNivelLuz(), 2);
+      Serial.print(" | Intensidad LEDs: ");
+      Serial.println(intensidadAuto);
+      ultimoDebugAuto = millis();
+  }
   
-  else {
-    sala->escribir(0);
-    cocina->escribir(0);
-    cuarto1->escribir(0);
-    patioInterno->escribir(0);
-    patioFrontal->escribir(0);
-    patioTrasero->escribir(0);
+  // Aplicar intensidad proporcional a todos los LEDs (solo si no hay override manual)
+  // Pero primero, actualizar el array intensidadAuto[] para usar en aplicarControlCombinado()
+  for (int i = 0; i < 6; i++) {
+      intensidadAutoArray[i] = intensidadAuto;
   }
 }
+
 
 int Casa::contarLEDsEncendidos() {
   int contador = 0;

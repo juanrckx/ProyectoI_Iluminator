@@ -44,6 +44,11 @@ class Casa {
     bool estadoManual[6]; // Estado manual para cada LED
     bool overrideManual[6];
 
+    // Intensidades para LEDs
+    int intensidadAutoArray[6];
+    static const int UMBRAL_OSCURO = 50;
+    static const int UMBRAL_CLARO = 200;
+
   public:
     Casa(); //Constructor con pines por defecto (simulación)
     void iniciar();
