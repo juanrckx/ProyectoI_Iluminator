@@ -13,6 +13,7 @@ class Casa {
     LED* sala;
     LED* cocina;
     LED* cuarto1;
+    LED* cuarto2;
     LED* patioInterno;
     LED* patioFrontal;
     LED* patioTrasero;
@@ -20,10 +21,11 @@ class Casa {
     // Sensores, (pueden ser 1 por espacio, pero para pruebas se probará con uno global)
     SensorLDR* sensor;
 
-    // Botones: 6 para manual
+    // Botones: 7 para manual
     Boton* botonSala;
     Boton* botonCocina;
     Boton* botonCuarto1;
+    Boton* botonCuarto2;
     Boton* botonPatioInt;
     Boton* botonPatioFront;
     Boton* botonPatioTras;
@@ -41,11 +43,11 @@ class Casa {
     unsigned long ultimaActualizacionPot;
     unsigned long ultimaActualizacionLCD;
 
-    bool estadoManual[6]; // Estado manual para cada LED
-    bool overrideManual[6];
+    bool estadoManual[7]; // Estado manual para cada LED
+    bool overrideManual[7];
 
     // Intensidades para LEDs
-    int intensidadAutoArray[6];
+    int intensidadAutoArray[7];
     static const int UMBRAL_OSCURO = 50;
     static const int UMBRAL_CLARO = 200;
 
@@ -68,7 +70,7 @@ class Casa {
     void leerPotenciometro();
     ModoIluminacion obtenerModoDesdePot(int valorPot); //Método interno
 
-    enum Espacios { SALA, COCINA, CUARTO1, PATIO_INT, PATIO_FRONT, PATIO_TRAS};
+    enum Espacios {SALA, COCINA, CUARTO1, CUARTO2, PATIO_INT, PATIO_FRONT, PATIO_TRAS};
 };
 
 #endif

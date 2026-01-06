@@ -4,6 +4,7 @@ Casa miCasa;
 
 void setup() {
   miCasa.iniciar();
+  
 }
 
 void loop() {

@@ -8,20 +8,22 @@
 
 //Constructor con pines
 Casa::Casa() :
-  // LEDS - 6 espacios 
-  sala(new LED(2)),
-  cocina(new LED(3)),
-  cuarto1(new LED(4)),
-  patioInterno(new LED(5)),
-  patioFrontal(new LED(6)),
+  // LEDS - 7 espacios 
+  sala(new LED(3)),
+  cocina(new LED(5)),
+  cuarto1(new LED(6)),
+  cuarto2(new LED(11)),
+  patioInterno(new LED(9)),
+  patioFrontal(new LED(10)),
   patioTrasero(new LED(7)),
 
   sensor(new SensorLDR(A0, 250)),
 
   botonSala(new Boton(8)),
-  botonCocina(new Boton(9)),
-  botonCuarto1(new Boton(10)),
-  botonPatioInt(new Boton(11)),
+  botonCocina(new Boton(4)),
+  botonCuarto1(new Boton(A3)),
+  botonCuarto2(new Boton(A2)),
+  botonPatioInt(new Boton(2)),
   botonPatioFront(new Boton(12)),
   botonPatioTras(new Boton(13)),      
 
@@ -35,7 +37,7 @@ Casa::Casa() :
 
   // Inicializar estados manuales
   {
-  for(int i = 0; i < 6; i++) {
+  for(int i = 0; i < 7; i++) {
     estadoManual[i] = false;
     overrideManual[i] = false;
     intensidadAutoArray[i] = 0;
@@ -56,6 +58,8 @@ void Casa::iniciar() {
   cuarto1->iniciar();
   Serial.println("LED Cuarto1: OK");
 
+  cuarto2->iniciar();
+
   patioInterno->iniciar();
   Serial.println("LED patioInt: OK");
 
@@ -71,6 +75,7 @@ void Casa::iniciar() {
   botonSala->iniciar();
   botonCocina->iniciar();
   botonCuarto1->iniciar();
+  botonCuarto2->iniciar();
   botonPatioInt->iniciar();
   botonPatioFront->iniciar();
   botonPatioTras->iniciar();
@@ -78,7 +83,7 @@ void Casa::iniciar() {
   pinMode(PIN_POTENCIOMETRO, INPUT);
 
   pantalla->iniciar();
-  for(int i = 0; i < 6; i++) {
+  for(int i = 0; i < 7; i++) {
     estadoManual[i] = false;
     overrideManual[i] = false;
   }
@@ -91,9 +96,9 @@ void Casa::aplicarControlCombinado() {
     }
     
     // Array de LEDs para fácil acceso
-    LED* leds[] = {sala, cocina, cuarto1, patioInterno, patioFrontal, patioTrasero};
+    LED* leds[] = {sala, cocina, cuarto1, cuarto2, patioInterno, patioFrontal, patioTrasero};
     
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 7; i++) {
         int intensidadFinal;
         
         if (modoActual == MODO_MANUAL) {
@@ -118,15 +123,10 @@ void Casa::aplicarControlCombinado() {
 }
 
 void Casa::toggleLEDManual(int index) {
-  if(index < 0 || index >= 6) return;
+  if(index < 0 || index >= 7) return;
 
   estadoManual[index] = !estadoManual[index];
   overrideManual[index] = true; // Marcar como sobreescrito
-
-  Serial.print("LED ");
-  Serial.print(index);
-  Serial.print(" manual: ");
-  Serial.println(estadoManual[index] ? "ON" : "OFF");
 }
 
 ModoIluminacion Casa::obtenerModoDesdePot(int valorPot) {
@@ -154,6 +154,11 @@ void Casa::verificarBotones() {
   if (botonCuarto1->fuePresionado()) {
     toggleLEDManual(CUARTO1);
   }
+
+  if (botonCuarto2->fuePresionado()) {
+    toggleLEDManual(CUARTO2);
+  }
+
   if (botonPatioInt->fuePresionado()) {
     toggleLEDManual(PATIO_INT);
   }
@@ -188,7 +193,7 @@ void Casa::actualizar() {
     default:
       aplicarModoGlobal(modoActual);
       // Resetear overrides cuando entramos en modo especial
-      for(int i = 0; i < 6; i++) {
+      for(int i = 0; i < 7; i++) {
         overrideManual[i] = false;
       }
       break;
@@ -217,7 +222,7 @@ void Casa::cambiarModo(ModoIluminacion nuevoModo) {
 
   // Si cambia a manual o auto, apagar modos especiales
   if (nuevoModo == MODO_AUTO || nuevoModo == MODO_MANUAL) {
-    for(int i = 0; i < 6; i++) {
+    for(int i = 0; i < 7; i++) {
       overrideManual[i] = false;
     }
   } 
@@ -229,15 +234,17 @@ void Casa::aplicarModoGlobal(ModoIluminacion modo) {
       sala->escribir(50);  // Luz tenue
       cocina->escribir(0); // Apagado
       cuarto1->escribir(30);
+      cuarto2->escribir(30);
       patioInterno->escribir(30);
       patioFrontal->escribir(10);
-      patioTrasero->escribir(10);
+      patioTrasero->escribir(0);
       break;
 
     case MODO_LECTURA:
       sala->escribir(255);
       cocina->escribir(200);
       cuarto1->escribir(255);
+      cuarto2->escribir(255);
       patioInterno->escribir(100);
       patioFrontal->escribir(0);
       patioTrasero->escribir(0);
@@ -251,6 +258,7 @@ void Casa::aplicarModoGlobal(ModoIluminacion modo) {
         sala->escribir(!estado * 255);
         cocina->escribir(estado * 255);
         cuarto1->escribir(!estado * 255);
+        cuarto2->escribir(!estado * 255);
         patioInterno->escribir(estado * 255);
         patioFrontal->escribir(!estado * 255);
         patioTrasero->escribir(estado * 255);
@@ -263,6 +271,7 @@ void Casa::aplicarModoGlobal(ModoIluminacion modo) {
       sala->escribir(150);
       cocina->escribir(40);
       cuarto1->escribir(150);
+      cuarto2->escribir(150);
       patioInterno->escribir(40);
       patioFrontal->escribir(40);
       patioTrasero->escribir(128);
@@ -272,6 +281,7 @@ void Casa::aplicarModoGlobal(ModoIluminacion modo) {
       sala->escribir(0);
       cocina->escribir(0);
       cuarto1->escribir(0);
+      cuarto2->escribir(0);
       patioInterno->escribir(0);
       patioFrontal->escribir(0);
       patioTrasero->escribir(0);
@@ -282,22 +292,9 @@ void Casa::aplicarModoGlobal(ModoIluminacion modo) {
 
 void Casa::controlAutomatico() {
   int intensidadAuto = sensor->calcularIntensidadLED(255);
-
-  // DEBUG: Mostrar valores
-  static unsigned long ultimoDebugAuto = 0;
-  if (millis() - ultimoDebugAuto > 1000) {
-      Serial.print("[AUTO] Sensor: ");
-      Serial.print(sensor->leer());
-      Serial.print(" | Nivel Luz: ");
-      Serial.print(sensor->obtenerNivelLuz(), 2);
-      Serial.print(" | Intensidad LEDs: ");
-      Serial.println(intensidadAuto);
-      ultimoDebugAuto = millis();
-  }
-  
   // Aplicar intensidad proporcional a todos los LEDs (solo si no hay override manual)
   // Pero primero, actualizar el array intensidadAuto[] para usar en aplicarControlCombinado()
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < 7; i++) {
       intensidadAutoArray[i] = intensidadAuto;
   }
 }
@@ -308,6 +305,7 @@ int Casa::contarLEDsEncendidos() {
   if (sala->leer()) contador++;
   if (cocina->leer()) contador++;
   if (cuarto1->leer()) contador++;
+  if (cuarto2->leer()) contador++;
   if (patioInterno->leer()) contador++;
   if (patioFrontal->leer()) contador++;
   if (patioTrasero->leer()) contador++;

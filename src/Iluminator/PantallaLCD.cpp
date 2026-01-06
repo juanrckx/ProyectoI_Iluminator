@@ -62,7 +62,7 @@ void PantallaLCD::mostrarInfo(int valorLuz, String modo, int ledsEncendidos) {
   //Mostrar LEDs encendidos
   lcd->print(" L:");
   lcd->print(ledsEncendidos);
-  lcd->print("/6");
+  lcd->print("/7");
 
   //Indicador visual de modo
   lcd->setCursor(15, 1);

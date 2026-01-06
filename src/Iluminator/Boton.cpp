@@ -4,7 +4,7 @@
 Boton::Boton(int pinBoton, int debounce)
   : pin(pinBoton), debounceDelay(debounce), 
     ultimaEstable(LOW), ultimoCambio(0), 
-    ultimoEvento(0), estadoPrevio(LOW) {}
+    ultimoEvento(0), estadoPrevio(HIGH) {}
 
 void Boton::iniciar() {
     pinMode(pin, INPUT_PULLUP);
@@ -48,11 +48,16 @@ bool Boton::fuePresionado() {
     bool resultado = false;
     
     if (presionado) {
-        if ((ahora - ultimoEvento) > debounceDelay * 2) {
+        if (ultimoEvento == 0) {
             resultado = true;
             ultimoEvento = ahora;
         }
+        else if ((ahora - ultimoEvento) > debounceDelay * 3) {
+            ultimoEvento = 0;
+        }
     }
-    
+    else {
+        ultimoEvento = 0;
+    }
     return resultado;
 }
